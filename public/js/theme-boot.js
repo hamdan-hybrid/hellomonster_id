@@ -1,0 +1,1 @@
+(function(){var n=document['documentElement'],X='light';try{var C=document['cookie']['match'](/(?:^|;\s*)du_theme=(light|dark)/),h=C&&C[0x1]||window['localStorage']['getItem']('du_theme');h==='light'||h==='dark'?X=h:window['matchMedia']&&window['matchMedia']('(prefers-color-scheme:\x20dark)')['matches']&&(X='dark');}catch{}n['setAttribute']('data-theme',X);}());

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-i18n="disp.docTitle">Display Pelanggan</title>
+  <!-- Display pelanggan: layar yang menghadap pelanggan di kasir (monitor kedua / tablet / TV), bukan untuk mesin pencari. -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#4fb3f6">
+  <link rel="icon" href="/favicon.ico?v=2" sizes="any">
+  <link rel="icon" href="/img/favicon-32.png?v=2" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+  <link rel="preload" href="/fonts/plus-jakarta-sans-v12-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- Tema perangkat untuk menu bahasa; taman & kartu memakai warnanya sendiri (park.css, display.css). -->
+  <script src="/js/theme-boot.js"></script>
+  <link rel="stylesheet" href="/css/base.css?v=17">
+  <link rel="stylesheet" href="/css/park.css?v=1">
+  <link rel="stylesheet" href="/css/display.css?v=1">
+  <script type="module" src="/js/display.js?v=1"></script>
+  <link rel="modulepreload" href="/js/lib.js?v=17">
+  <link rel="modulepreload" href="/js/i18n.js?v=17">
+  <link rel="modulepreload" href="/js/park.js?v=1">
+</head>
+<body class="display">
+  <!-- Taman bermain di belakang isi display (diisi park.js). -->
+  <div class="park" aria-hidden="true"></div>
+
+  <div class="screen">
+    <header class="d-head">
+      <div class="gate-sign d-sign" id="sign">
+        <span class="gate-eyebrow" data-i18n="join.welcome">Selamat datang di</span>
+        <h1 class="gate-name" id="biz">&nbsp;</h1>
+      </div>
+      <div class="d-tools">
+        <div class="d-clock" id="clock"></div>
+        <div class="d-buttons" id="tools"></div>
+      </div>
+    </header>
+    <main class="d-main" id="main" aria-live="polite"></main>
+    <p class="d-offline" id="offline" role="status" hidden></p>
+  </div>
+  <div class="d-overlay" id="overlay" hidden></div>
+</body>
+</html>

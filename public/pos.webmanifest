@@ -1,0 +1,17 @@
+{
+  "name": "Kasir POS · DOMPET USAHA",
+  "short_name": "Kasir DU",
+  "description": "Kasir POS DOMPET USAHA — terbuka layar penuh tanpa bar browser.",
+  "id": "/pos",
+  "start_url": "/pos",
+  "scope": "/pos",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#0e2f59",
+  "theme_color": "#0e2f59",
+  "lang": "id",
+  "icons": [
+    { "src": "/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

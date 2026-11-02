@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kasir POS · DOMPET USAHA</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0e2f59">
+  <link rel="icon" href="/favicon.ico?v=2" sizes="any">
+  <link rel="icon" href="/img/favicon-32.png?v=2" type="image/png" sizes="32x32">
+  <link rel="icon" href="/img/icon-192.png?v=2" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+  <!-- Pasang Kasir sebagai aplikasi (PWA): dibuka dari layar utama, selalu layar penuh tanpa bar browser. -->
+  <link rel="manifest" href="/pos.webmanifest">
+  <link rel="preload" href="/fonts/plus-jakarta-sans-v12-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/js/theme-boot.js"></script>
+  <link rel="stylesheet" href="/css/base.css?v=21">
+  <link rel="stylesheet" href="/css/pos.css?v=21">
+  <link rel="stylesheet" href="/css/pos-app.css?v=21">
+  <script type="module" src="/js/pos.js?v=21"></script>
+  <!-- Modul yang di-import ikut diunduh paralel sejak awal, tanpa menunggu modul induknya. -->
+  <link rel="modulepreload" href="/js/lib.js">
+  <link rel="modulepreload" href="/js/i18n.js">
+  <link rel="modulepreload" href="/js/locale-id.js">
+  <link rel="modulepreload" href="/js/i18n-ui.js">
+  <link rel="modulepreload" href="/js/pos-common.js">
+  <link rel="modulepreload" href="/js/pos-keyboard.js">
+  <link rel="modulepreload" href="/js/pricing.mjs">
+  <link rel="modulepreload" href="/js/pos-print.js">
+  <link rel="modulepreload" href="/js/pos-scan.js">
+</head>
+<body class="pos-app">
+  <header class="pos-top pos-top-dark">
+    <span class="pos-logo"><img src="/img/logo.png" alt="DOMPET USAHA" width="79" height="32"></span>
+    <div class="pos-store">
+      <strong id="branch-name" data-i18n="pos.loading">Memuat…</strong>
+      <span id="terminal-name"></span>
+    </div>
+    <nav class="pos-menu" id="pos-menu" aria-label="Menu kasir" data-i18n-attr="aria-label:pos.menuAria" hidden></nav>
+    <div class="pos-top-right">
+      <span class="cashier-pill" id="cashier-pill"></span>
+      <span class="conn" id="conn" data-state="checking" data-i18n="pos.checking" role="status" aria-live="polite">Memeriksa…</span>
+      <div class="pos-clock" aria-label="Tanggal dan waktu" data-i18n-attr="aria-label:pos.clockAria">
+        <strong id="clock-time">--:--</strong>
+        <span id="clock-date"></span>
+      </div>
+      <button type="button" class="btn btn-sm btn-logout" id="btn-logout" data-i18n="shell.logout">Keluar</button>
+    </div>
+  </header>
+
+  <main class="app-main" id="view" aria-live="polite"></main>
+
+  <dialog class="modal" id="modal">
+    <form method="dialog" class="modal-card" id="modal-form" novalidate></form>
+  </dialog>
+</body>
+</html>

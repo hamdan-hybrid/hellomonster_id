@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="posLogin.pageTitle">Login Kasir POS · DOMPET USAHA — Masuk Cepat dengan PIN</title>
+  <!-- SEO & pratinjau tautan. {{BASE_URL}} diisi server dari PUBLIC_URL (lihat .env).
+       Catatan: perangkat yang belum terpasang (termasuk robot mesin pencari) dialihkan ke /pos/setup. -->
+  <meta name="description" content="Login Kasir POS DOMPET USAHA dengan PIN 6 digit. Transaksi cepat di layar sentuh: scan barcode, promo &amp; voucher otomatis, dan struk printer termal.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="application-name" content="DOMPET USAHA">
+  <meta name="author" content="PT HYBRID DAYA CAKRA GLOBAL">
+  <meta name="theme-color" content="#0e2f59">
+  <link rel="canonical" href="{{BASE_URL}}/pos/login">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="DOMPET USAHA">
+  <meta property="og:locale" content="id_ID">
+  <meta property="og:url" content="{{BASE_URL}}/pos/login">
+  <meta property="og:title" content="Login Kasir POS · DOMPET USAHA">
+  <meta property="og:description" content="Kasir POS cepat dengan login PIN 6 digit: scan barcode, promo &amp; voucher otomatis, dan struk printer termal.">
+  <meta property="og:image" content="{{BASE_URL}}/img/og-pos.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="DOMPET USAHA — Kasir POS dengan login PIN 6 digit">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Login Kasir POS · DOMPET USAHA">
+  <meta name="twitter:description" content="Kasir POS cepat dengan login PIN 6 digit: scan barcode, promo &amp; voucher otomatis, dan struk printer termal.">
+  <meta name="twitter:image" content="{{BASE_URL}}/img/og-pos.jpg">
+  <meta name="twitter:image:alt" content="DOMPET USAHA — Kasir POS dengan login PIN 6 digit">
+  <link rel="icon" href="/favicon.ico?v=2" sizes="any">
+  <link rel="icon" href="/img/favicon-32.png?v=2" type="image/png" sizes="32x32">
+  <link rel="icon" href="/img/icon-192.png?v=2" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png?v=2">
+  <!-- Pasang Kasir sebagai aplikasi (PWA): dibuka dari layar utama, selalu layar penuh tanpa bar browser. -->
+  <link rel="manifest" href="/pos.webmanifest">
+  <link rel="preload" href="/fonts/plus-jakarta-sans-v12-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/js/theme-boot.js"></script>
+  <link rel="stylesheet" href="/css/base.css?v=17">
+  <link rel="stylesheet" href="/css/pos.css?v=18">
+  <script type="module" src="/js/pos-login.js?v=17"></script>
+  <!-- Modul yang di-import ikut diunduh paralel sejak awal, tanpa menunggu modul induknya. -->
+  <link rel="modulepreload" href="/js/lib.js">
+  <link rel="modulepreload" href="/js/i18n.js">
+  <link rel="modulepreload" href="/js/locale-id.js">
+  <link rel="modulepreload" href="/js/i18n-ui.js">
+  <link rel="modulepreload" href="/js/pos-common.js">
+  <link rel="modulepreload" href="/js/pos-keyboard.js">
+</head>
+<body class="pos-body">
+  <div class="pos-screen login-screen">
+    <header class="pos-top">
+      <div class="pos-brand">
+        <span class="pos-logo"><img src="/img/logo.png" alt="DOMPET USAHA" width="79" height="32"><span class="edition-tag">Playground</span></span>
+        <div class="pos-store">
+          <strong id="branch-name" data-i18n="pos.loading">Memuat…</strong>
+          <span id="terminal-name"></span>
+        </div>
+      </div>
+      <div class="pos-top-right">
+        <span class="conn" id="conn" data-state="checking" data-i18n="pos.checking" role="status" aria-live="polite">Memeriksa…</span>
+        <div class="pos-clock" aria-label="Tanggal dan waktu" data-i18n-attr="aria-label:pos.clockAria">
+          <strong id="clock-time">--:--</strong>
+          <span id="clock-date"></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="pos-main login-main">
+      <section class="cashier-panel" aria-labelledby="cashier-title">
+        <!-- Ilustrasi loket tiket playground (dekoratif): kasir melambai, tiket QR keluar dari printer, anak membawa kartu member,
+             ayunan & perosotan di belakang. Warna & animasi di pos.css; animasi berhenti bila pengguna memilih gerak minimal. -->
+        <svg class="login-art" viewBox="0 0 560 240" preserveAspectRatio="xMidYMax meet" fill="none" font-family="Plus Jakarta Sans, system-ui, sans-serif" aria-hidden="true" focusable="false">
+          <defs>
+            <radialGradient id="la-glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#41b4a7" stop-opacity="0.34"/><stop offset="1" stop-color="#41b4a7" stop-opacity="0"/></radialGradient>
+            <linearGradient id="la-ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3cae9f" stop-opacity="0.75"/><stop offset="1" stop-color="#145a55" stop-opacity="0"/></linearGradient>
+            <linearGradient id="la-counter" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a63a6"/><stop offset="0.5" stop-color="#1d5290" stop-opacity="0.6"/><stop offset="1" stop-color="#174a83" stop-opacity="0"/></linearGradient>
+            <linearGradient id="la-uniform" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#46bcae"/><stop offset="1" stop-color="#2e9488"/></linearGradient>
+            <linearGradient id="la-hijab" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6a24a"/><stop offset="1" stop-color="#e07a0a"/></linearGradient>
+            <linearGradient id="la-slide" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb04a"/><stop offset="1" stop-color="#e2700c"/></linearGradient>
+            <linearGradient id="la-screen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eaf0f7"/></linearGradient>
+            <filter id="la-shadow" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#020c1c" flood-opacity="0.45"/></filter>
+            <linearGradient id="la-edge-fade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/><stop offset="0.1" stop-color="#ffffff"/><stop offset="0.9" stop-color="#ffffff"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+            <mask id="la-edges" maskUnits="userSpaceOnUse" x="0" y="0" width="560" height="240"><rect width="560" height="240" fill="url(#la-edge-fade)"/></mask>
+            <clipPath id="la-slot"><rect x="378" y="96" width="28" height="55"/></clipPath>
+          </defs>
+
+          <!-- Cahaya latar & bendera hias -->
+          <circle cx="280" cy="124" r="150" fill="url(#la-glow)"/>
+          <path class="la-string" d="M6 18Q76 58 142 44M418 44Q484 58 554 18"/>
+          <path class="la-f-orange" d="M23.2 29.8h12l-6 12z"/><path class="la-f-white" d="M46.2 38.7h12l-6 12z"/><path class="la-f-teal" d="M69 44.5h12l-6 12z"/><path class="la-f-orange" d="M91.6 47.3h12l-6 12z"/><path class="la-f-white" d="M113.9 47.2h12l-6 12z"/>
+          <path class="la-f-orange" d="M434.1 47.2h12l-6 12z"/><path class="la-f-white" d="M456.4 47.3h12l-6 12z"/><path class="la-f-teal" d="M479 44.5h12l-6 12z"/><path class="la-f-orange" d="M501.8 38.7h12l-6 12z"/><path class="la-f-white" d="M524.8 29.8h12l-6 12z"/>
+
+          <!-- Area bermain di kiri & kanan loket; memudar ke tepi gambar. -->
+          <g mask="url(#la-edges)">
+            <!-- Kiri: bukit, pohon, perosotan -->
+            <path d="M0 200Q70 182 150 196V240H0z" fill="url(#la-ground)"/>
+            <g class="la-tree"><rect x="5" y="150" width="5" height="40" rx="2"/><circle cx="8" cy="140" r="20"/><circle cx="24" cy="152" r="13"/></g>
+            <path class="la-post" d="M28 112v84M52 112v84M28 128h24M28 146h24M28 164h24M28 182h24"/>
+            <path class="la-roof" d="M22 114 40 94l18 20z"/>
+            <path class="la-pole" d="M40 94V82"/>
+            <path class="la-flag" d="M40 82h11l-3.5 3.5L51 89H40z"/>
+            <rect class="la-deck" x="24" y="132" width="34" height="5" rx="2.5"/>
+            <path d="M56 136c18 2 24 22 34 40 6 11 14 18 28 20" stroke="url(#la-slide)" stroke-width="9" stroke-linecap="round"/>
+
+            <!-- Kanan: ayunan (satu dinaiki anak) -->
+            <path d="M410 196Q490 180 560 194V240H410z" fill="url(#la-ground)"/>
+            <path class="la-post" d="M446 114 434 200M446 114 458 200M542 114 530 200M542 114 554 200"/>
+            <path class="la-bar" d="M440 113h108"/>
+            <g class="la-swing">
+              <path class="la-rope" d="M468 114v52M486 114v52"/>
+              <rect class="la-seat" x="463" y="164" width="28" height="5" rx="2.5"/>
+              <path class="la-leg" d="M474 167l8 14M482 166l8 12"/>
+              <rect class="la-shirt-peach" x="469" y="146" width="16" height="21" rx="7"/>
+              <circle class="la-skin" cx="477" cy="138" r="7.5"/>
+              <path class="la-hair" d="M469.5 137a7.5 7.5 0 0 1 15 0c-2.5-3.5-5-4.5-7.5-4.5s-5 1-7.5 4.5z"/>
+              <path class="la-arm" d="M470 152l-2-6M484 152l2-6"/>
+            </g>
+            <g class="la-swing la-swing-b">
+              <path class="la-rope" d="M512 114v44M528 114v44"/>
+              <rect class="la-seat la-seat-b" x="507" y="156" width="26" height="5" rx="2.5"/>
+            </g>
+            <path class="la-fence" d="M4 186v26M15 186v26M26 186v26M37 186v26M48 186v26M59 186v26M70 186v26M81 186v26M92 186v26M103 186v26M114 186v26M125 186v26M136 186v26M0 194h140M0 206h140M424 186v26M435 186v26M446 186v26M457 186v26M468 186v26M479 186v26M490 186v26M501 186v26M512 186v26M523 186v26M534 186v26M545 186v26M556 186v26M420 194h140M420 206h140"/>
+          </g>
+
+          <!-- Loket tiket: dinding, daftar harga, jam, tiang, kanopi bergaris, papan tiket -->
+          <rect class="la-wall" x="156" y="62" width="248" height="108"/>
+          <rect class="la-board" x="172" y="80" width="58" height="46" rx="5"/>
+          <path class="la-board-ticket" d="M178 86h12v3a1.6 1.6 0 0 0 0 3v3h-12v-3a1.6 1.6 0 0 0 0-3z"/>
+          <rect x="194" y="87.5" width="28" height="3" rx="1.5" fill="#ffffff" opacity="0.7"/>
+          <rect x="178" y="102" width="26" height="3" rx="1.5" fill="#ffffff" opacity="0.4"/><rect x="212" y="102" width="12" height="3" rx="1.5" fill="#f6b66b"/>
+          <rect x="178" y="110" width="20" height="3" rx="1.5" fill="#ffffff" opacity="0.4"/><rect x="212" y="110" width="12" height="3" rx="1.5" fill="#f6b66b"/>
+          <rect x="178" y="118" width="24" height="3" rx="1.5" fill="#ffffff" opacity="0.4"/><rect x="212" y="118" width="12" height="3" rx="1.5" fill="#f6b66b"/>
+          <circle class="la-clock" cx="362" cy="92" r="12"/>
+          <path class="la-clock-hand" d="M362 92v-7M362 92l5 3"/>
+          <rect class="la-post-booth" x="148" y="60" width="10" height="110" rx="3"/>
+          <rect class="la-post-booth" x="402" y="60" width="10" height="110" rx="3"/>
+          <rect class="la-roof-bar" x="136" y="35" width="288" height="9" rx="4.5"/>
+          <rect class="la-aw-o" x="140" y="42" width="20" height="18"/><rect class="la-aw-w" x="160" y="42" width="20" height="18"/><rect class="la-aw-o" x="180" y="42" width="20" height="18"/><rect class="la-aw-w" x="200" y="42" width="20" height="18"/><rect class="la-aw-o" x="220" y="42" width="20" height="18"/><rect class="la-aw-w" x="240" y="42" width="20" height="18"/><rect class="la-aw-o" x="260" y="42" width="20" height="18"/><rect class="la-aw-w" x="280" y="42" width="20" height="18"/><rect class="la-aw-o" x="300" y="42" width="20" height="18"/><rect class="la-aw-w" x="320" y="42" width="20" height="18"/><rect class="la-aw-o" x="340" y="42" width="20" height="18"/><rect class="la-aw-w" x="360" y="42" width="20" height="18"/><rect class="la-aw-o" x="380" y="42" width="20" height="18"/><rect class="la-aw-w" x="400" y="42" width="20" height="18"/>
+          <circle class="la-aw-o" cx="150" cy="60" r="10"/><circle class="la-aw-w" cx="170" cy="60" r="10"/><circle class="la-aw-o" cx="190" cy="60" r="10"/><circle class="la-aw-w" cx="210" cy="60" r="10"/><circle class="la-aw-o" cx="230" cy="60" r="10"/><circle class="la-aw-w" cx="250" cy="60" r="10"/><circle class="la-aw-o" cx="270" cy="60" r="10"/><circle class="la-aw-w" cx="290" cy="60" r="10"/><circle class="la-aw-o" cx="310" cy="60" r="10"/><circle class="la-aw-w" cx="330" cy="60" r="10"/><circle class="la-aw-o" cx="350" cy="60" r="10"/><circle class="la-aw-w" cx="370" cy="60" r="10"/><circle class="la-aw-o" cx="390" cy="60" r="10"/><circle class="la-aw-w" cx="410" cy="60" r="10"/>
+          <path class="la-sign" d="M240 6h80v9a5 5 0 0 0 0 10v10h-80V25a5 5 0 0 0 0-10z"/>
+          <path class="la-sign-dash" d="M256 9v23M304 9v23"/>
+          <path class="la-sign-star" d="m280 12 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>
+
+          <!-- Kasir berhijab: melambai menyapa, tangan lain di meja dekat tablet -->
+          <path d="M246 170v-20c0-14 11-22 25-23h18c14 1 25 9 25 23v20z" fill="url(#la-uniform)"/>
+          <g class="la-wave">
+            <path class="la-sleeve" d="M252 140l-16-14"/>
+            <path class="la-forearm" d="M236 126l-4-16"/>
+            <ellipse class="la-skin" cx="231" cy="106" rx="5.5" ry="6.5"/>
+            <path class="la-finger" d="M227.5 101.5l-1.5-4M231 100v-4.5M234.5 101.5l1.5-4"/>
+          </g>
+          <path class="la-sleeve" d="M309 140c8 6 12 14 14 24"/>
+          <ellipse class="la-skin" cx="324" cy="166" rx="6" ry="4.5"/>
+          <path d="M280 76c-14 0-22 11-22 25 0 9-2 17-8 27 10 9 50 9 60 0-6-10-8-18-8-27 0-14-8-25-22-25z" fill="url(#la-hijab)"/>
+          <path d="M262 124c6 10 30 10 36 0 2 6 1 12-2 17-10 5-22 5-32 0-3-5-4-11-2-17z" fill="url(#la-hijab)"/>
+          <ellipse cx="280" cy="102" rx="15.5" ry="17.5" fill="#c96806" opacity="0.45"/>
+          <ellipse class="la-skin" cx="280" cy="102.5" rx="13.5" ry="15.5"/>
+          <path d="M266.6 98c1.6-9 7-13.6 13.4-13.6s11.8 4.6 13.4 13.6c-3.8-3.2-8.2-4.6-13.4-4.6s-9.6 1.4-13.4 4.6z" fill="#c96806"/>
+          <ellipse class="la-eye" cx="274.6" cy="103" rx="1.7" ry="2.1"/>
+          <ellipse class="la-eye" cx="285.4" cy="103" rx="1.7" ry="2.1"/>
+          <path class="la-brow" d="M272 98.6q2.6-1.6 5.2 0M282.8 98.6q2.6-1.6 5.2 0"/>
+          <circle class="la-cheek" cx="270.6" cy="108.6" r="2.6"/>
+          <circle class="la-cheek" cx="289.4" cy="108.6" r="2.6"/>
+          <path class="la-smile" d="M276 110q4 3.6 8 0"/>
+          <rect class="la-badge" x="292" y="148" width="14" height="9" rx="2"/>
+          <rect x="294" y="150" width="10" height="2" rx="1" fill="#ef8611"/>
+
+          <!-- Meja loket -->
+          <rect x="148" y="175" width="264" height="65" fill="url(#la-counter)"/>
+          <rect x="148" y="185" width="264" height="4" fill="#ef8611" opacity="0.9"/>
+          <rect x="148" y="192" width="264" height="2" fill="#41b4a7" opacity="0.6"/>
+          <rect class="la-counter-top" x="136" y="166" width="288" height="9" rx="4.5"/>
+          <rect x="144" y="167" width="272" height="2" rx="1" fill="#ffffff" opacity="0.9"/>
+
+          <!-- Toples permen -->
+          <path class="la-stick" d="M184 136v24M196 132v28M190 140v20"/>
+          <circle class="la-candy-o" cx="184" cy="133" r="6"/>
+          <circle class="la-candy-t" cx="196" cy="128" r="6"/>
+          <circle class="la-candy-p" cx="190" cy="138" r="5"/>
+          <path class="la-swirl" d="M184 133m-3 0a3 3 0 1 1 3 3M196 128m-3 0a3 3 0 1 1 3 3"/>
+          <rect class="la-jar" x="176" y="144" width="28" height="23" rx="6"/>
+
+          <!-- Tablet POS -->
+          <path d="M334 166h18l-4-16h-10z" fill="#0d3058"/>
+          <g filter="url(#la-shadow)"><rect x="312" y="110" width="62" height="42" rx="6" fill="#0a2747"/></g>
+          <rect x="316" y="114" width="54" height="34" rx="3" fill="url(#la-screen)"/>
+          <path d="M319 114h48a3 3 0 0 1 3 3v3h-54v-3a3 3 0 0 1 3-3z" fill="#113b6d"/>
+          <circle cx="321" cy="117" r="1.4" fill="#41b4a7"/>
+          <rect x="320" y="124" width="24" height="2.4" rx="1.2" fill="#c8d3e1"/><rect x="358" y="124" width="8" height="2.4" rx="1.2" fill="#c8d3e1"/>
+          <rect x="320" y="130" width="18" height="2.4" rx="1.2" fill="#c8d3e1"/><rect x="358" y="130" width="8" height="2.4" rx="1.2" fill="#c8d3e1"/>
+          <rect x="320" y="138" width="46" height="6" rx="3" fill="#ef8611"/>
+
+          <!-- Printer tiket: tiket QR keluar dari celah -->
+          <g clip-path="url(#la-slot)">
+            <g class="la-print">
+              <rect x="383" y="106" width="18" height="44" rx="2" fill="#ffffff"/>
+              <path d="M386 109h4v4h-4zM394 109h4v4h-4zM386 117h4v4h-4zM391 114h2v2h-2zM395 118h3v3h-3z" fill="#0e2f59"/>
+              <path d="M385 127h14" stroke="#c8d3e1" stroke-dasharray="2 2"/>
+              <rect x="386" y="132" width="12" height="3" rx="1.5" fill="#ef8611"/>
+              <rect x="386" y="138" width="9" height="2" rx="1" fill="#c8d3e1"/>
+            </g>
+          </g>
+          <rect x="376" y="149" width="32" height="18" rx="4" fill="#e3eaf3"/>
+          <rect x="381" y="150" width="22" height="2.5" rx="1.25" fill="#8fa2bb"/>
+          <circle class="la-blink" cx="401" cy="160" r="2" fill="#41b4a7"/>
+
+          <!-- Pengunjung kecil membawa balon & kartu member -->
+          <g class="la-balloons">
+            <path class="la-balloon-string" d="M104 204C96 180 100 150 92 128M104 204C108 178 104 150 112 122"/>
+            <ellipse class="la-b-teal" cx="91" cy="113" rx="12" ry="15"/>
+            <path class="la-b-teal" d="M88 127h6l-3 4z"/>
+            <ellipse class="la-b-orange" cx="113" cy="106" rx="12" ry="15"/>
+            <path class="la-b-orange" d="M110 120h6l-3 4z"/>
+          </g>
+          <path class="la-leg" d="M114 214v20M122 214v20"/>
+          <rect class="la-shirt-blue" x="107" y="186" width="22" height="30" rx="8"/>
+          <path class="la-arm" d="M110 192l-6 12M127 191l10-19"/>
+          <rect class="la-card" x="131" y="160" width="14" height="9" rx="2" transform="rotate(-14 138 164.5)"/>
+          <circle class="la-skin" cx="118" cy="174" r="10"/>
+          <path class="la-hair" d="M108 173a10 10 0 0 1 20-1c-3-3-7-4-10-4-4 0-7 2-10 5z"/>
+          <path class="la-hair" d="M108.5 170c-4 2-6 7-4 12 2-3 4-6 5-9z"/>
+          <circle class="la-eye" cx="122.6" cy="175" r="1.4"/>
+          <path class="la-smile" d="M120 179.5q2.6 2 5 0"/>
+
+          <!-- Chip pembayaran berhasil -->
+          <g class="la-float">
+            <g filter="url(#la-shadow)"><rect x="392" y="70" width="160" height="30" rx="15" fill="#ffffff"/></g>
+            <circle cx="408" cy="85" r="8.5" fill="#1f8a4c"/>
+            <path d="m404 85 3 3 5-6" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="422" y="89" font-size="11" font-weight="700" fill="#0f1e36" data-i18n="pos.paymentDone">Pembayaran berhasil</text>
+          </g>
+
+          <!-- Kilau -->
+          <path class="la-twinkle" d="M214 14l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#ffffff"/>
+          <path class="la-twinkle la-twinkle-b" d="M520 140l1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6 4-1.6z" fill="#ffd9a0"/>
+          <path class="la-twinkle la-twinkle-c" d="M426 128l1.4 3.6 3.6 1.4-3.6 1.4-1.4 3.6-1.4-3.6-3.6-1.4 3.6-1.4z" fill="#41b4a7"/>
+        </svg>
+        <div class="greeting">
+          <p class="greeting-time" id="greeting">Selamat bertugas</p>
+          <h1 data-i18n="posLogin.title">Masuk ke kasir</h1>
+          <p data-i18n="posLogin.lead">Pilih nama Anda, lalu masukkan PIN 6 digit. Jangan bagikan PIN kepada siapa pun.</p>
+        </div>
+        <!-- Pasang Kasir sebagai aplikasi (PWA layar penuh). Tampil hanya bila browser mengizinkan pemasangan
+             (beforeinstallprompt, lihat pos-login.js); tersembunyi di dalam aplikasi itu sendiri & APK Kasir DU. -->
+        <div class="install-card" id="install-card" hidden>
+          <span class="install-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span>
+          <span class="install-text">
+            <strong data-i18n="posLogin.installTitle">Pasang Kasir sebagai aplikasi</strong>
+            <span id="install-lead" data-i18n="posLogin.installLead">Terbuka layar penuh otomatis, juga setelah login.</span>
+          </span>
+          <button type="button" class="btn install-btn" id="install-btn" data-i18n="posLogin.install">Pasang</button>
+        </div>
+        <h2 class="panel-title" id="cashier-title" data-i18n="posLogin.pickAccount">Pilih akun kasir</h2>
+        <div class="cashier-grid" id="cashier-grid" role="group" aria-labelledby="cashier-title"></div>
+      </section>
+
+      <section class="pin-card" aria-labelledby="pin-title">
+        <h2 class="sr-only" id="pin-title" data-i18n="posLogin.pinTitle">Masukkan PIN kasir</h2>
+        <div class="pin-who" id="pin-who"></div>
+        <div class="pin-dots" id="pin-dots" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <p class="sr-only" id="pin-count" aria-live="polite"></p>
+        <p class="pin-message info" id="pin-message" role="alert">Masukkan 6 digit PIN Anda</p>
+
+        <div class="keypad" id="keypad" aria-label="Keypad PIN" data-i18n-attr="aria-label:posLogin.keypad">
+          <button type="button" class="key" data-digit="1">1</button>
+          <button type="button" class="key" data-digit="2">2</button>
+          <button type="button" class="key" data-digit="3">3</button>
+          <button type="button" class="key" data-digit="4">4</button>
+          <button type="button" class="key" data-digit="5">5</button>
+          <button type="button" class="key" data-digit="6">6</button>
+          <button type="button" class="key" data-digit="7">7</button>
+          <button type="button" class="key" data-digit="8">8</button>
+          <button type="button" class="key" data-digit="9">9</button>
+          <button type="button" class="key key-fn" data-action="clear" aria-label="Bersihkan PIN" data-i18n-attr="aria-label:posLogin.clearPin">C</button>
+          <button type="button" class="key" data-digit="0">0</button>
+          <button type="button" class="key key-fn" data-action="back" aria-label="Hapus satu digit" data-i18n-attr="aria-label:posLogin.backspace">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="m18 9-6 6m0-6 6 6"/></svg>
+          </button>
+        </div>
+
+        <button type="button" class="btn btn-accent btn-block btn-masuk" id="btn-masuk" disabled>
+          <span class="spinner" hidden></span>
+          <svg class="btn-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+          <span class="btn-label" data-i18n="posLogin.signInCaps">MASUK</span>
+        </button>
+        <!-- Hanya tampil di komputer (lihat pos.css): keypad juga bisa diganti keyboard fisik / numpad. -->
+        <p class="pin-hint">
+          <svg class="pin-hint-icon" role="img" aria-label="Pakai keyboard" data-i18n-attr="aria-label:posLogin.keyboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg>
+          <span><kbd>0–9</kbd> PIN</span>
+          <span><kbd>Enter</kbd> <span data-i18n="posLogin.kbdEnter">masuk</span></span>
+          <span><kbd>Esc</kbd> <span data-i18n="posLogin.kbdEsc">hapus</span></span>
+        </p>
+        <div class="app-release" data-version="{{APP_VERSION}}" data-updated="{{APP_UPDATED}}"></div>
+      </section>
+    </main>
+
+    <footer class="pos-foot">
+      <span>&copy; PT HYBRID DAYA CAKRA GLOBAL · DOMPET USAHA</span>
+      <a href="/login" data-i18n="posLogin.backofficeLink">Masuk Backoffice</a>
+    </footer>
+  </div>
+</body>
+</html>

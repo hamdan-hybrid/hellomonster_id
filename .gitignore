@@ -1,0 +1,9 @@
+node_modules/
+.env
+.data/
+coverage/
+# Foto produk & foto profil (data, bukan kode) — ikut di-backup bersama database
+storage/
+
+# Paket rilis (npm run build)
+/release/
