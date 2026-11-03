@@ -19,7 +19,7 @@
 #   update-node.sh --version 26.12.1   pasang versi tertentu (dalam versi besar yang sama)
 #   update-node.sh --no-restart    pasang & pindahkan tautan tanpa restart pm2 (pemasangan awal / uji)
 # Pengaturan (variabel lingkungan): DOMPET_NODE_MAJOR (26), DOMPET_NODE_DIR (~/.dompet-node),
-#   DOMPET_PM2_APP (dompet-usaha; kosong = tanpa pm2), DOMPET_HEALTH_URL (http://127.0.0.1:2026/api/health).
+#   DOMPET_PM2_APP (dompet-usaha; kosong = tanpa pm2), DOMPET_HEALTH_URL (http://127.0.0.1:<PORT di .env, bawaan 3009>/api/health).
 set -euo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 umask 022
@@ -28,7 +28,9 @@ MAJOR="${DOMPET_NODE_MAJOR:-26}"
 BASE="${DOMPET_NODE_DIR:-$HOME/.dompet-node}"
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PM2_APP="${DOMPET_PM2_APP-dompet-usaha}"
-HEALTH_URL="${DOMPET_HEALTH_URL:-http://127.0.0.1:2026/api/health}"
+# Port aplikasi dari .env-nya (bisa diganti lewat setup.sh).
+APP_PORT="$({ sed -n 's/^PORT=//p' "$APP_DIR/.env" 2>/dev/null || true; } | tail -n 1)"
+HEALTH_URL="${DOMPET_HEALTH_URL:-http://127.0.0.1:${APP_PORT:-3009}/api/health}"
 DIST="https://nodejs.org/dist"
 KEYS_URL="https://raw.githubusercontent.com/nodejs/release-keys/HEAD/gpg-only-active-keys/pubring.kbx"
 KEEP=3

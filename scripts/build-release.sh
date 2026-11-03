@@ -9,7 +9,7 @@
 # PROTECT=0 npm run build → paket dengan kode apa adanya (mis. untuk melacak masalah).
 # Hanya daftar itu yang diambil: .env, database (.data/), foto (storage/), test/, dan
 # SDK-KASIR-ANDROID/ tidak pernah ikut. Folder git → isi dari commit HEAD; tanpa git → isi folder apa adanya.
-# Cara memasang: INSTALL.md.
+# README.md di paket diambil dari docs/README-rilis.md (cara instal singkat). Cara memasang lengkap: INSTALL.md.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -35,6 +35,11 @@ else
   SOURCE="tanpa git"
   tar -c -C "$ROOT" --exclude=node_modules --exclude='*.log' "${SOURCES[@]}" | tar -x -C "$WORK/$DIR"
 fi
+# README paket = docs/README-rilis.md (cara instal singkat, tanpa penjelasan fitur), versi & build terisi;
+# README pengembangan dan berkas kerja terjemahan (docs/i18n*) tidak ikut.
+mv "$WORK/$DIR/docs/README-rilis.md" "$WORK/$DIR/README.md"
+sed -i "s/{{VERSI}}/$VERSION/g; s/{{COMMIT}}/$SOURCE/g" "$WORK/$DIR/README.md"
+rm -f "$WORK/$DIR"/docs/i18n*
 (cd "$WORK/$DIR" && npm ci --omit=dev --ignore-scripts --no-audit --no-fund --loglevel=error)
 # Alat pemadat & pengacak diambil dari node_modules folder sumber (dev dependency), tidak ikut ke paket.
 [ "${PROTECT:-1}" = "0" ] || node "$ROOT/scripts/build-protect.mjs" "$WORK/$DIR"

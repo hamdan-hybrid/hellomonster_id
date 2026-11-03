@@ -34,7 +34,7 @@ di log bila versi LTS yang lebih baru tersedia. Lihat [Naik versi besar](#naik-v
 cd ~/Desktop/DOMPET-USAHA
 scripts/node-update/update-node.sh --no-restart        # pasang Node.js 26 terbaru (terverifikasi)
 pm2 delete dompet-usaha && pm2 start ecosystem.config.cjs --only dompet-usaha && pm2 save
-curl -s http://127.0.0.1:2026/api/health               # {"ok":true,...}
+curl -s http://127.0.0.1:3009/api/health               # {"ok":true,...}
 readlink -f /proc/$(pm2 pid dompet-usaha)/exe          # ~/.dompet-node/v26.x.y/bin/node
 # Jadwal pembaruan tiap malam 03.15:
 ( crontab -l 2>/dev/null; echo "15 3 * * * $HOME/Desktop/DOMPET-USAHA/scripts/node-update/update-node.sh >/dev/null 2>&1 # dompet-node-update" ) | crontab -

@@ -2,15 +2,19 @@
 # Pemasangan otomatis DOMPET USAHA di server Ubuntu 22.04 / 24.04. Jalankan dari folder paket rilis yang sudah
 # diekstrak. Satu perintah menyiapkan semuanya: PostgreSQL 18, Node.js, pm2, .env, database + migrasi, aplikasi
 # dan backup harian 02.00 di pm2, serta menyala sendiri setiap server restart.
-#   ./setup.sh                                          pemasangan baru, dibuka di jaringan lokal (http://IP-server:2026)
+#   ./setup.sh                                          pemasangan baru, dibuka di jaringan lokal (http://IP-server:3009)
 #   ./setup.sh --domain playground.dompetusaha.com      pemasangan baru, dibuka lewat domain HTTPS (Cloudflare Tunnel)
 #   ./setup.sh --env ~/env-lama --restore ~/2026-11-03  pindah server: .env + backup (database & foto) server lama
 #   ./setup.sh                                          lagi, setelah paket versi baru diekstrak ke folder ini = update
 # Pemasangan baru (tanpa --restore) dimulai dengan data kosong: nama usaha PT HYBRID DAYA CAKRA GLOBAL, cabang PUSAT,
 # dan akun Pemilik owner / owner123. Password itu sementara: wajib diganti saat pertama masuk Backoffice. Nilai bawaan
 # bisa diganti lewat environment: OWNER_USERNAME=… OWNER_PASSWORD=… BUSINESS_NAME="…" ./setup.sh
-# Pilihan lain: --port N (bawaan 2026). Dengan --domain, token Cloudflare Tunnel ditanyakan bila cloudflared belum
-# berjalan (tanpa terminal interaktif: CLOUDFLARE_TUNNEL_TOKEN=... ./setup.sh ...).
+# Port aplikasi (bawaan 3009) dan port database PostgreSQL ditanyakan setiap setup (Enter = port saat ini), jadi bisa
+# diganti kapan saja dengan menjalankan ./setup.sh lagi; port yang sudah dipakai program lain (mis. PostgreSQL lain di
+# 5433) ditolak dengan saran port bebas terdekat. Tanpa terminal interaktif: --port N, --db-port N. PostgreSQL lain di
+# server tidak disentuh: bila cluster bawaan sudah dipakai database lain, aplikasi mendapat cluster khusus "dompet".
+# Dengan --domain, token Cloudflare Tunnel ditanyakan bila cloudflared belum berjalan (tanpa terminal interaktif:
+# CLOUDFLARE_TUNNEL_TOKEN=... ./setup.sh ...).
 # Aman dijalankan ulang: yang sudah ada tidak dibuat ulang, data tidak pernah dihapus atau ditimpa, dan sebelum versi
 # baru dimuat database dibackup dulu. Jalankan sebagai pengguna biasa yang punya sudo, bukan root. Panduan: INSTALL.md.
 set -Eeuo pipefail
@@ -25,6 +29,9 @@ DB_NAME=dompet_usaha
 DB_USER=dompet
 PG_VERSION=18
 PGBIN=/usr/lib/postgresql/$PG_VERSION/bin
+# Cluster khusus aplikasi, dibuat bila cluster "main" sudah dipakai database lain.
+APP_CLUSTER=dompet
+OTHER_DBS_SQL="SELECT string_agg(datname, ', ') FROM pg_database WHERE NOT datistemplate AND datname NOT IN ('postgres', '$DB_NAME')"
 NODE_MAJOR=26
 # Harus sama dengan bawaan di ecosystem.production.config.cjs.
 BACKUP_DIR=${BACKUP_DIR:-$HOME/backup-database-playground}
@@ -42,14 +49,15 @@ die() { printf '\n%sGAGAL: %s%s\n' "$RED" "$*" "$RESET" >&2; exit 1; }
 usage() { awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; }
 trap 'printf "\n%sGAGAL di baris %s: %s%s\n" "$RED" "$LINENO" "$BASH_COMMAND" "$RESET" >&2' ERR
 
-DOMAIN='' PORT_ARG='' ENV_IMPORT='' RESTORE=''
+DOMAIN='' PORT_ARG='' PG_PORT_ARG='' ENV_IMPORT='' RESTORE=''
 while [ $# -gt 0 ]; do
   case $1 in
-    --domain | --port | --env | --restore)
+    --domain | --port | --db-port | --env | --restore)
       [ $# -ge 2 ] && [ -n "$2" ] || die "$1 butuh nilai (lihat ./setup.sh --help)"
       case $1 in
         --domain) DOMAIN=$2 ;;
         --port) PORT_ARG=$2 ;;
+        --db-port) PG_PORT_ARG=$2 ;;
         --env) ENV_IMPORT=$(realpath -m "$2") ;;
         --restore) RESTORE=$(realpath -m "$2") ;;
       esac
@@ -76,7 +84,47 @@ env_set() {
 }
 env_disable() { sed -i "s|^$1=\(.*\)\$|# $1=\1  (dinonaktifkan setup.sh: $2)|" "$ENV_FILE"; }
 
-cluster() { { pg_lsclusters -h 2>/dev/null || true; } | awk -v v="$PG_VERSION" '$1 == v && $2 == "main"'; }
+valid_port() { [[ $1 =~ ^[0-9]{4,5}$ ]] && [ "$1" -ge 1024 ] && [ "$1" -le 65535 ]; }
+# Port sedang dipakai program lain? $2 = port milik aplikasi / database ini sendiri, yang tidak dihitung.
+port_busy() { [ "$1" != "${2:-}" ] && ss -ltnH "sport = :$1" 2>/dev/null | grep -q .; }
+# Port bebas terdekat mulai dari $1, untuk saran; $2 = port bagian lain aplikasi yang tidak boleh disarankan.
+free_port() {
+  local p=$1
+  [ "$p" -le 65535 ] || p=1024
+  while [ "$p" -lt 65535 ] && { [ "$p" = "${2:-}" ] || ss -ltnH "sport = :$p" 2>/dev/null | grep -q .; }; do p=$((p + 1)); done
+  echo "$p"
+}
+# Nama program pemakai port, mis. " (postgres)"; sudo agar proses milik pengguna lain juga terlihat.
+port_user() {
+  local who
+  who=$({ sudo ss -ltnpH "sport = :$1" 2>/dev/null || true; } | grep -o 'users:(("[^"]*"' | head -n 1 | cut -d'"' -f2)
+  [ -z "$who" ] || echo " ($who)"
+}
+# Tanya port (Enter = $2) sampai valid & bebas; hasilnya di ASKED_PORT. $3 = port milik sendiri, $4 = port bagian lain
+# aplikasi yang tidak boleh sama. Port yang sudah dipakai → saran port bebas terdekat, jadi pilihan Enter berikutnya.
+ask_port() {
+  local label=$1 suggestion=$2 own=${3:-} other=${4:-} answer
+  while :; do
+    read -rp "   $label (Enter = $suggestion): " answer
+    answer=${answer:-$suggestion}
+    if ! valid_port "$answer"; then
+      note 'port harus angka 1024–65535'
+    elif [ "$answer" = "$other" ] || port_busy "$answer" "$own"; then
+      suggestion=$(free_port $((answer + 1)) "$other")
+      note "port $answer sudah dipakai $([ "$answer" = "$other" ] && echo 'aplikasi ini' || echo "program lain$(port_user "$answer")"). Saran: $suggestion"
+    else
+      ASKED_PORT=$answer
+      return
+    fi
+  done
+}
+
+# Cluster PostgreSQL 18 di server ini (pg_lsclusters: versi, nama, port, status, …).
+cluster_line() { { pg_lsclusters -h 2>/dev/null || true; } | awk -v v="$PG_VERSION" -v c="$1" '$1 == v && $2 == c'; }
+cluster_names() { { pg_lsclusters -h 2>/dev/null || true; } | awk -v v="$PG_VERSION" '$1 == v { print $2 }'; }
+cluster_port() { cluster_line "$1" | awk '{print $3}'; }
+cluster_online() { cluster_line "$1" | awk '{print $4}' | grep -q '^online'; }
+cluster_sql() { (cd / && sudo -u postgres "$PGBIN/psql" -X -qAt -p "$(cluster_port "$1")" -c "$2" 2>/dev/null) || true; }
 pg_admin() { (cd / && sudo -u postgres "$PGBIN/psql" -X -q -v ON_ERROR_STOP=1 -p "$PG_PORT" "$@"); }
 # Sandi aplikasi dari DATABASE_URL buatan skrip ini (hex); bentuk lain dianggap belum disiapkan.
 db_pass() { env_get DATABASE_URL | sed -n "s|^postgres://$DB_USER:\([0-9a-f]\{32,\}\)@localhost:$PG_PORT/$DB_NAME\$|\1|p"; }
@@ -140,7 +188,8 @@ UNIT
 [ "$(id -u)" -ne 0 ] || die 'jalankan sebagai pengguna biasa yang punya sudo, bukan root (aplikasi & pm2 berjalan atas nama pengguna itu).'
 [ -f package.json ] && [ -f src/server.js ] && [ -f "$ECOSYSTEM" ] || die "jalankan dari folder paket rilis DOMPET USAHA (berisi package.json, src/, $ECOSYSTEM)."
 command -v apt-get >/dev/null && command -v sudo >/dev/null || die 'skrip ini untuk Ubuntu/Debian (apt + sudo). Sistem lain: ikuti INSTALL.md.'
-[ -z "$PORT_ARG" ] || [[ $PORT_ARG =~ ^[0-9]+$ && $PORT_ARG -ge 1024 && $PORT_ARG -le 65535 ]] || die '--port harus angka 1024–65535.'
+[ -z "$PORT_ARG" ] || valid_port "$PORT_ARG" || die '--port harus angka 1024–65535.'
+[ -z "$PG_PORT_ARG" ] || valid_port "$PG_PORT_ARG" || die '--db-port harus angka 1024–65535.'
 if [ -n "$DOMAIN" ]; then
   DOMAIN=${DOMAIN#http://} DOMAIN=${DOMAIN#https://} DOMAIN=${DOMAIN%%/*}
   [[ $DOMAIN =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "--domain tidak valid: $DOMAIN"
@@ -167,11 +216,13 @@ if [ ${#missing[@]} -gt 0 ]; then
   sudo apt-get update -q >/dev/null
   apt_install "${missing[@]}"
 fi
+PG_FRESH=''
 if ! has_pkg "postgresql-$PG_VERSION"; then
   # Repositori resmi PostgreSQL: versi yang sama dengan server pembuat backup (pg_restore tidak membaca arsip versi
   # yang lebih baru darinya).
   sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
   apt_install "postgresql-$PG_VERSION"
+  PG_FRESH=1 # cluster "main" yang dibuat paket ini baru & kosong, jadi boleh dipakai dan dipindah port-nya
 fi
 ok "PostgreSQL $PG_VERSION"
 if ! node_ok; then
@@ -191,8 +242,11 @@ if ! command -v pm2 >/dev/null; then
 fi
 # Versi dari package.json pm2: `pm2 -v` pertama kali juga menyalakan daemon pm2 dan mencetak pesannya.
 ok "pm2 $(node -p "require('$(dirname "$(readlink -f "$(command -v pm2)")")/../package.json').version" 2>/dev/null || true)"
-# Paket rilis sudah membawa node_modules; folder sumber belum.
+# Paket rilis sudah membawa node_modules; folder sumber dan hasil git clone belum.
 [ -d node_modules/express ] || npm ci --omit=dev --no-audit --no-fund --loglevel=error >/dev/null
+# Sudah pernah dipasang (aplikasi terdaftar di pm2) = update, bukan pemasangan baru.
+UPDATE=0
+pm2_has "$APP_NAME" && UPDATE=1
 
 # ── .env ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 step 'Konfigurasi .env'
@@ -206,9 +260,27 @@ if [ ! -f "$ENV_FILE" ]; then
   fi
 fi
 chmod 600 "$ENV_FILE"
-[ -z "$PORT_ARG" ] || env_set PORT "$PORT_ARG"
+OLD_PORT=$(env_get PORT)
+OLD_PORT=${OLD_PORT:-3009}
+OWN_PORT=''
+[ "$UPDATE" = 0 ] || OWN_PORT=$OLD_PORT
+if [ -z "$PORT_ARG" ] && [ -t 0 ]; then
+  suggestion=$OLD_PORT
+  if port_busy "$suggestion" "$OWN_PORT"; then
+    suggestion=$(free_port $((OLD_PORT + 1)))
+    note "port $OLD_PORT sudah dipakai program lain$(port_user "$OLD_PORT"). Saran: $suggestion"
+  fi
+  ask_port 'Port aplikasi' "$suggestion" "$OWN_PORT"
+  PORT_ARG=$ASKED_PORT
+fi
+PORT_ARG=${PORT_ARG:-$OLD_PORT}
+! port_busy "$PORT_ARG" "$OWN_PORT" ||
+  die "port $PORT_ARG sudah dipakai program lain$(port_user "$PORT_ARG"). Port bebas terdekat: --port $(free_port $((PORT_ARG + 1)))"
+[ "$PORT_ARG" = "$OLD_PORT" ] || env_set PORT "$PORT_ARG"
 PORT=$(env_get PORT)
-PORT=${PORT:-2026}
+PORT=${PORT:-3009}
+PORT_CHANGED=''
+[ "$UPDATE" = 1 ] && [ "$PORT" != "$OLD_PORT" ] && PORT_CHANGED=1
 [ "$(env_get NODE_ENV)" = production ] || env_set NODE_ENV production
 [ -z "$DOMAIN" ] || env_set PUBLIC_URL "https://$DOMAIN"
 PUBLIC_URL=$(env_get PUBLIC_URL)
@@ -231,11 +303,65 @@ fi
 
 # ── Database ─────────────────────────────────────────────────────────────────────────────────────────────────────
 step 'Database PostgreSQL'
-[ -n "$(cluster)" ] || sudo pg_createcluster "$PG_VERSION" main >/dev/null
-case $(cluster | awk '{print $4}') in online*) ;; *) sudo pg_ctlcluster "$PG_VERSION" main start ;; esac
+# Cluster untuk aplikasi ini: yang sudah berisi database aplikasi; kalau belum ada, cluster "main" yang baru dipasang
+# skrip ini atau masih kosong; selain itu cluster khusus $APP_CLUSTER, agar database lain di server tidak terganggu.
+PG_CLUSTER=''
+for c in $(cluster_names); do
+  if cluster_online "$c" && [ "$(cluster_sql "$c" "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'")" = 1 ]; then
+    PG_CLUSTER=$c
+    break
+  fi
+done
+if [ -z "$PG_CLUSTER" ]; then
+  if [ -n "$(cluster_line "$APP_CLUSTER")" ]; then
+    PG_CLUSTER=$APP_CLUSTER
+  elif [ -n "$(cluster_line main)" ] && { [ -n "$PG_FRESH" ] || { cluster_online main && [ -z "$(cluster_sql main "$OTHER_DBS_SQL")" ]; }; }; then
+    PG_CLUSTER=main
+  fi
+fi
+CUR_PG_PORT='' OWN_PG_PORT='' SHARED=''
+if [ -n "$PG_CLUSTER" ]; then
+  CUR_PG_PORT=$(cluster_port "$PG_CLUSTER")
+  if cluster_online "$PG_CLUSTER"; then
+    OWN_PG_PORT=$CUR_PG_PORT
+    SHARED=$(cluster_sql "$PG_CLUSTER" "$OTHER_DBS_SQL")
+  fi
+fi
+if [ -n "$SHARED" ]; then
+  # Cluster ini juga dipakai database lain: port-nya tidak diubah agar database itu tidak terganggu.
+  [ -z "$PG_PORT_ARG" ] || [ "$PG_PORT_ARG" = "$CUR_PG_PORT" ] ||
+    note "port database tetap $CUR_PG_PORT: cluster $PG_VERSION/$PG_CLUSTER juga dipakai database lain ($SHARED)"
+  NEW_PG_PORT=$CUR_PG_PORT
+else
+  suggestion=${CUR_PG_PORT:-5432}
+  if [ "$suggestion" = "$PORT" ] || port_busy "$suggestion" "$OWN_PG_PORT"; then
+    used=$suggestion
+    suggestion=$(free_port $((used + 1)) "$PORT")
+    note "port database $used sudah dipakai $([ "$used" = "$PORT" ] && echo 'aplikasi ini' || echo "program lain$(port_user "$used")"). Saran: $suggestion"
+  fi
+  if [ -z "$PG_PORT_ARG" ] && [ -t 0 ]; then
+    ask_port 'Port database PostgreSQL' "$suggestion" "$OWN_PG_PORT" "$PORT"
+    NEW_PG_PORT=$ASKED_PORT
+  else
+    NEW_PG_PORT=${PG_PORT_ARG:-$suggestion}
+    if [ "$NEW_PG_PORT" = "$PORT" ] || port_busy "$NEW_PG_PORT" "$OWN_PG_PORT"; then
+      die "port database $NEW_PG_PORT sudah dipakai $([ "$NEW_PG_PORT" = "$PORT" ] && echo 'aplikasi ini' || echo "program lain$(port_user "$NEW_PG_PORT")"). Port bebas terdekat: --db-port $(free_port $((NEW_PG_PORT + 1)) "$PORT")"
+    fi
+  fi
+fi
+if [ -z "$PG_CLUSTER" ]; then
+  sudo pg_createcluster --port "$NEW_PG_PORT" "$PG_VERSION" "$APP_CLUSTER" >/dev/null
+  PG_CLUSTER=$APP_CLUSTER
+  note "cluster khusus $PG_VERSION/$APP_CLUSTER dibuat; cluster PostgreSQL lain di server ini tidak disentuh"
+elif [ "$NEW_PG_PORT" != "$CUR_PG_PORT" ]; then
+  ! cluster_online "$PG_CLUSTER" || sudo pg_ctlcluster "$PG_VERSION" "$PG_CLUSTER" stop
+  sudo pg_conftool "$PG_VERSION" "$PG_CLUSTER" set port "$NEW_PG_PORT"
+fi
+cluster_online "$PG_CLUSTER" || sudo pg_ctlcluster "$PG_VERSION" "$PG_CLUSTER" start
 sudo systemctl enable postgresql >/dev/null 2>&1 || true
-PG_PORT=$(cluster | awk '{print $3}')
-[ -n "$PG_PORT" ] || die "cluster PostgreSQL $PG_VERSION tidak ditemukan (pg_lsclusters)."
+PG_PORT=$(cluster_port "$PG_CLUSTER")
+{ [ -n "$PG_PORT" ] && cluster_online "$PG_CLUSTER"; } || die "PostgreSQL $PG_VERSION/$PG_CLUSTER tidak berjalan (cek: pg_lsclusters)."
+ok "PostgreSQL $PG_VERSION, cluster $PG_CLUSTER, port $PG_PORT$([ -n "$SHARED" ] && echo " (dipakai bersama: $SHARED)")"
 if db_ok; then
   ok "database $DB_NAME tersambung (pengguna $DB_USER, port $PG_PORT)"
 else
@@ -279,8 +405,6 @@ fi
 
 # ── Migrasi & akun ───────────────────────────────────────────────────────────────────────────────────────────────
 step 'Struktur database (migrasi)'
-UPDATE=0
-pm2_has "$APP_NAME" && UPDATE=1
 if [ $UPDATE = 1 ] && [ "$(table_count)" != 0 ]; then
   # Update: backup dulu. Bila backup atau migrasi gagal, aplikasi versi lama tetap berjalan.
   BACKUP_DIR=$BACKUP_DIR node scripts/backup-db.mjs | sed 's/^/   /' || die 'backup sebelum update gagal — update dihentikan, aplikasi lama tetap berjalan.'
@@ -319,8 +443,11 @@ else
 fi
 # Firewall aktif: buka port aplikasi untuk jaringan lokal saja (kasir, pintu tiket); dari internet lewat domain.
 if command -v ufw >/dev/null && sudo ufw status 2>/dev/null | grep -q '^Status: active'; then
-  for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16; do sudo ufw allow from "$net" to any port "$PORT" proto tcp >/dev/null; done
-  ok "firewall: port $PORT dibuka untuk jaringan lokal"
+  for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16; do
+    sudo ufw allow from "$net" to any port "$PORT" proto tcp >/dev/null
+    [ -z "$PORT_CHANGED" ] || sudo ufw delete allow from "$net" to any port "$OLD_PORT" proto tcp >/dev/null 2>&1 || true
+  done
+  ok "firewall: port $PORT dibuka untuk jaringan lokal$([ -n "$PORT_CHANGED" ] && echo ", port lama $OLD_PORT ditutup")"
 fi
 
 # ── Domain ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -338,6 +465,7 @@ if [ -n "$PUBLIC_URL" ]; then
     if [ -n "$token" ]; then
       install_tunnel "$token"
       ok "cloudflared terpasang & berjalan"
+      note "di dasbor Cloudflare, arahkan ${PUBLIC_URL#https://} ke http://localhost:$PORT"
     else
       TUNNEL_TODO=1
       note 'cloudflared belum dipasang (dilewati)'
@@ -354,6 +482,7 @@ BASE=${PUBLIC_URL:-http://$LAN_IP:$PORT}
 echo "   Backoffice    : $BASE/login"
 echo "   Kasir (POS)   : $BASE/pos/setup"
 echo "   API pintu     : http://$LAN_IP:$PORT/api/gate  (jaringan lokal saja; beri server ini IP tetap)"
+echo "   Database      : PostgreSQL $PG_VERSION (cluster $PG_CLUSTER), port $PG_PORT, database $DB_NAME"
 echo "   Status & log  : pm2 ls  |  pm2 logs $APP_NAME"
 echo "   Backup        : $BACKUP_DIR, setiap 02.00 — salin berkala ke disk atau cloud lain"
 if [ -n "$NEW_OWNER" ]; then
@@ -362,4 +491,10 @@ if [ -n "$NEW_OWNER" ]; then
   echo "                   sebelum diganti siapa pun yang tahu password ini bisa masuk"
 fi
 [ -z "$TUNNEL_TODO" ] || echo "   ${BOLD}Domain${RESET}: pasang Cloudflare Tunnel (INSTALL.md), lalu arahkan ${PUBLIC_URL#https://} ke http://localhost:$PORT"
+if [ -n "$PORT_CHANGED" ]; then
+  echo "   ${BOLD}Port berubah $OLD_PORT → $PORT${RESET}, sesuaikan juga:"
+  [ -z "$PUBLIC_URL" ] || echo "     - rute Cloudflare Tunnel ${PUBLIC_URL#https://} → http://localhost:$PORT (dasbor Cloudflare)"
+  echo "     - alamat API di setiap mesin pintu tiket → http://$LAN_IP:$PORT/api/gate"
+  echo "     - perangkat yang membuka http://$LAN_IP:$OLD_PORT langsung (kasir / monitor di jaringan lokal)"
+fi
 echo "   Simpan salinan .env di tempat aman, terpisah dari backup: tanpa PIN_PEPPER, PIN semua kasir harus diatur ulang."

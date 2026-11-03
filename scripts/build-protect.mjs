@@ -9,7 +9,9 @@
 //  - src/**/*.js: dipadatkan & diacak penuh — nama acak + teks dipindah ke tabel tersandi (base64). Kode server tidak
 //    pernah diunduh browser, jadi ukurannya tidak berpengaruh. SQL migrasi & JSON tidak diubah.
 // Rujukan modul './x.js' dibiarkan apa adanya agar versi aset (?v=, src/services/assets.js) tetap bekerja.
-// HTML tidak diubah di sini: server memadatkan halaman saat dikirim (src/utils/html.js) dan mengompresnya.
+//  - public/pages/*.html: dipak ke src/pages.pack.js (dibaca src/pages.js) lalu berkas .html dihapus dari paket,
+//    sehingga di server tidak ada HTML polos yang bisa diubah; isinya ikut diacak sebagai string di bundle server.
+//    (Ini perlindungan berkas di server, bukan enkripsi: halaman yang dikirim tetap terbaca di browser pengunjung.)
 // Pengacakan memakai pengaturan ringan (tanpa control-flow flattening / dead code) agar aplikasi tetap cepat.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -85,6 +87,25 @@ for (const file of walk(jsDir)) {
 
 for (const file of walk(path.join(root, 'public', 'css'))) {
   if (file.endsWith('.css')) await rewrite(file, (src) => minify(src, 'css'));
+}
+
+// Pak halaman HTML ke modul src sebelum pengacakan src/ di bawah, lalu hapus berkas .html dari paket.
+const pagesDir = path.join(root, 'public', 'pages');
+const pageFiles = fs.existsSync(pagesDir) ? fs.readdirSync(pagesDir).filter((f) => f.endsWith('.html')) : [];
+if (pageFiles.length) {
+  const map = Object.fromEntries(pageFiles.map((n) => [n, fs.readFileSync(path.join(pagesDir, n), 'utf8')]));
+  const bytes = Object.values(map).reduce((n, s) => n + Buffer.byteLength(s), 0);
+  fs.writeFileSync(path.join(root, 'src', 'pages.pack.js'), `module.exports = ${JSON.stringify(map)};\n`);
+  for (const n of pageFiles) fs.rmSync(path.join(pagesDir, n)); // folder disisakan (boleh kosong)
+  // Di paket, pages.pack.js adalah berkas yang HARUS ikut (mis. ke repo rilis). Baris abai hanya untuk pohon sumber,
+  // jadi dibuang dari .gitignore paket agar tidak ikut terabaikan saat folder rilis di-commit ke git.
+  const gitignore = path.join(root, '.gitignore');
+  if (fs.existsSync(gitignore)) {
+    const kept = fs.readFileSync(gitignore, 'utf8').split('\n')
+      .filter((l) => l.trim() !== 'src/pages.pack.js' && !l.includes('Dihasilkan hanya saat build'));
+    fs.writeFileSync(gitignore, kept.join('\n'));
+  }
+  console.log(`Halaman HTML dipak ke src: ${pageFiles.length} halaman (${(bytes / 1024).toFixed(0)} KB) → src/pages.pack.js`);
 }
 
 for (const file of walk(path.join(root, 'src'))) {
