@@ -1,6 +1,6 @@
 {
   "name": "dompet-usaha",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "DOMPET USAHA — Backoffice & Kasir POS (PT Hybrid Daya Cakra Global)",
   "main": "src/server.js",
   "scripts": {

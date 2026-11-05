@@ -1,6 +1,6 @@
 # DOMPET USAHA — Playground
 
-Versi 2.1.1 (build `b3e8e04`).
+Versi 2.1.2 (build `524141e`).
 
 ## Cara instal
 
@@ -12,7 +12,7 @@ Butuh server **Ubuntu 22.04 atau 24.04** yang terhubung ke internet, dan akun bi
    git clone https://github.com/hamdan-hybrid/hellomonster_id.git ~/dompet-usaha-playground
    cd ~/dompet-usaha-playground
    ```
-   Kalau memakai paket `.tar.gz`, ganti perintah di atas dengan `tar -xzf dompet-usaha-playground-2.1.1.tar.gz -C ~` lalu `cd ~/dompet-usaha-playground`.
+   Kalau memakai paket `.tar.gz`, ganti perintah di atas dengan `tar -xzf dompet-usaha-playground-2.1.2.tar.gz -C ~` lalu `cd ~/dompet-usaha-playground`.
 
 2. Jalankan pemasang:
    ```bash
